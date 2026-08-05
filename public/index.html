@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ön Muhasebe - Gelir & Gider</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="ph-fill ph-wallet"></i> Ön Muhasebe & Takip</h1>
+            <p>Tüm kasalarınızı, transferlerinizi ve aylık raporlarınızı yönetin</p>
+        </header>
+
+        <section class="kpi-section" id="kpi-accounts">
+            <!-- Kasalar JS ile buraya yüklenecek -->
+        </section>
+
+        <section class="glass-panel" style="margin-bottom: 2rem; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <strong><i class="ph-bold ph-funnel"></i> Filtrele:</strong>
+                <select id="filter-month" style="width: auto; padding: 0.5rem; border-radius: 0.5rem;">
+                    <option value="all">Tüm Zamanlar</option>
+                </select>
+                <select id="filter-type" style="width: auto; padding: 0.5rem; border-radius: 0.5rem;">
+                    <option value="all">Tüm İşlemler</option>
+                    <option value="income">Sadece Gelirler</option>
+                    <option value="expense">Sadece Giderler</option>
+                </select>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <button class="action-btn" style="background: rgba(255,255,255,0.05); color:var(--text-primary);" onclick="exportData()" title="Verileri Yedekle (İndir)"><i class="ph-bold ph-download-simple"></i></button>
+                <button class="action-btn" style="background: rgba(255,255,255,0.05); color:var(--text-primary);" onclick="document.getElementById('import-file').click()" title="Yedekten Geri Yükle"><i class="ph-bold ph-upload-simple"></i></button>
+                <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)">
+                <button class="submit-btn" style="width: auto; padding: 0.5rem 1rem; margin: 0; background: var(--success);" onclick="document.getElementById('new-account-modal').style.display='block'">
+                    + Yeni Kasa Ekle
+                </button>
+            </div>
+        </section>
+
+        <div class="main-content">
+            <section class="form-section glass-panel">
+                <h2>Yeni İşlem Ekle</h2>
+                <form id="transaction-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>İşlem Türü</label>
+                            <div class="type-toggle">
+                                <input type="radio" id="type-income" name="type" value="income" checked>
+                                <label for="type-income" class="toggle-btn income-btn">Gelir</label>
+                                
+                                <input type="radio" id="type-expense" name="type" value="expense">
+                                <label for="type-expense" class="toggle-btn expense-btn">Gider</label>
+
+                                <input type="radio" id="type-transfer" name="type" value="transfer">
+                                <label for="type-transfer" class="toggle-btn transfer-btn" style="background: rgba(59, 130, 246, 0.2);">Virman</label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" id="status-group">
+                            <label>Durum</label>
+                            <div class="type-toggle">
+                                <input type="radio" id="status-completed" name="status" value="completed" checked>
+                                <label for="status-completed" class="toggle-btn completed-btn">Ödendi/Tahsil</label>
+                                
+                                <input type="radio" id="status-planned" name="status" value="planned">
+                                <label for="status-planned" class="toggle-btn planned-btn">Olası/Planlanan</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row" id="transfer-accounts" style="display:none;">
+                        <div class="form-group">
+                            <label for="account-from">Gönderen Kasa</label>
+                            <select id="account-from"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="account-to">Alıcı Kasa</label>
+                            <select id="account-to"></select>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="single-account-group">
+                        <label for="account_id">İlgili Kasa / Hesap</label>
+                        <select id="account_id" required></select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="amount">Tutar (₺)</label>
+                            <input type="number" id="amount" placeholder="0.00" step="0.01" required>
+                        </div>
+                        <div class="form-group" style="display:flex; gap:0.5rem;">
+                            <div style="flex:1;">
+                                <label for="date">Tarih</label>
+                                <input type="date" id="date" required>
+                            </div>
+                            <div style="flex:1;">
+                                <label for="time">Saat (Opsiyonel)</label>
+                                <input type="time" id="time">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row" id="category-row">
+                        <div class="form-group">
+                            <label for="category">Kategori</label>
+                            <select id="category" required>
+                                <option value="" disabled selected>Kategori Seçin</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: flex-end; padding-bottom: 0.8rem;">
+                            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                                <input type="checkbox" id="is_recurring" style="width:20px; height:20px;">
+                                Düzenli İşlem (Her Ay Tekrarla)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Açıklama</label>
+                        <input type="text" id="description" placeholder="Örn: Ağustos Maaşı / Fatura Ödemesi" required>
+                    </div>
+
+                    <button type="submit" class="submit-btn">İşlemi Kaydet <i class="ph-bold ph-plus"></i></button>
+                </form>
+            </section>
+
+            <section class="stats-section glass-panel">
+                <h2>Aylık Özet <span id="chart-title-month" style="font-weight:400; font-size:1rem; opacity:0.7;">(Tümü)</span></h2>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom: 1.5rem;">
+                    <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 0.8rem;">
+                        <span style="display:block; font-size:0.85rem; color:var(--text-secondary);">Gerçekleşen Gelir</span>
+                        <strong style="color:var(--success); font-size:1.2rem;" id="monthly-income-completed">₺0.00</strong>
+                    </div>
+                    <div style="background: rgba(239, 68, 68, 0.1); padding: 1rem; border-radius: 0.8rem;">
+                        <span style="display:block; font-size:0.85rem; color:var(--text-secondary);">Gerçekleşen Gider</span>
+                        <strong style="color:var(--danger); font-size:1.2rem;" id="monthly-expense-completed">₺0.00</strong>
+                    </div>
+                    <div style="background: rgba(16, 185, 129, 0.05); padding: 1rem; border-radius: 0.8rem;">
+                        <span style="display:block; font-size:0.85rem; color:var(--text-secondary);">Beklenen Gelir</span>
+                        <strong style="color:var(--success); font-size:1.1rem; opacity:0.7;" id="monthly-income-planned">₺0.00</strong>
+                    </div>
+                    <div style="background: rgba(239, 68, 68, 0.05); padding: 1rem; border-radius: 0.8rem;">
+                        <span style="display:block; font-size:0.85rem; color:var(--text-secondary);">Beklenen Gider</span>
+                        <strong style="color:var(--danger); font-size:1.1rem; opacity:0.7;" id="monthly-expense-planned">₺0.00</strong>
+                    </div>
+                </div>
+
+                <h3 style="font-size:1.1rem; margin-bottom:1rem; color:var(--text-secondary);">Gider Dağılımı</h3>
+                <div class="chart-container">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <section class="history-section glass-panel">
+            <h2>İşlem Geçmişi & Gelecek Planlaması</h2>
+            <div class="table-container">
+                <table id="transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Kasa/Hesap</th>
+                            <th>Durum</th>
+                            <th>Kategori</th>
+                            <th>Açıklama & Finansal Durum</th>
+                            <th>Tutar</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-list">
+                    </tbody>
+                </table>
+            </div>
+            <div id="empty-state" class="empty-state">
+                <i class="ph ph-receipt"></i>
+                <p>Henüz bir işlem bulunmuyor.</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Yeni Kasa Modal -->
+    <div id="new-account-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:999;">
+        <div class="glass-panel" style="max-width:400px; margin:100px auto;">
+            <h2>Yeni Kasa / Hesap Ekle</h2>
+            <form id="new-account-form">
+                <div class="form-group">
+                    <label>Kasa Adı</label>
+                    <input type="text" id="new-account-name" required placeholder="Örn: İş Bankası">
+                </div>
+                <div class="form-group">
+                    <label>Başlangıç Bakiyesi</label>
+                    <input type="number" id="new-account-balance" value="0" step="0.01">
+                </div>
+                <div style="display:flex; gap:1rem;">
+                    <button type="button" class="submit-btn" style="background:var(--danger)" onclick="document.getElementById('new-account-modal').style.display='none'">İptal</button>
+                    <button type="submit" class="submit-btn">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Kasa Düzeltme Modal -->
+    <div id="correct-account-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:999;">
+        <div class="glass-panel" style="max-width:400px; margin:100px auto;">
+            <h2>Kasa Bakiyesi Düzenleme</h2>
+            <form id="correct-account-form">
+                <input type="hidden" id="correct-account-id">
+                <div class="form-group">
+                    <label>Kasa Adı</label>
+                    <input type="text" id="correct-account-name" readonly style="opacity:0.7;">
+                </div>
+                <div class="form-group">
+                    <label>Güncel (Gerçek) Bakiye</label>
+                    <input type="number" id="correct-account-target" step="0.01" required>
+                    <small style="color:var(--text-secondary); display:block; margin-top:0.5rem; line-height: 1.4;">Sistem, aradaki farkı otomatik hesaplayarak "Kasa Düzeltme" adıyla yeni bir gelir veya gider kaydı oluşturacaktır.</small>
+                </div>
+                <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+                    <button type="button" class="submit-btn" style="background:var(--danger)" onclick="document.getElementById('correct-account-modal').style.display='none'">İptal</button>
+                    <button type="submit" class="submit-btn">Değişikliği Uygula</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
